@@ -1,7 +1,6 @@
 """
-Database connection manager.
-Uses PostgreSQL (Neon) when DATABASE_URL is set,
-falls back to SQLite locally so existing dev workflow still works.
+Database connection manager — lazy initialization.
+PostgreSQL (Neon) when DATABASE_URL is set, SQLite fallback otherwise.
 """
 import os
 import sqlite3
@@ -15,13 +14,19 @@ if DATABASE_URL:
     import psycopg2
     import psycopg2.pool
 
-    _pool = psycopg2.pool.ThreadedConnectionPool(
-        minconn=1, maxconn=5, dsn=DATABASE_URL,
-    )
+    _pool = None  # ← lazy: don't connect at import time
+
+    def _get_pool():
+        global _pool
+        if _pool is None:
+            _pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn=1, maxconn=5, dsn=DATABASE_URL,
+            )
+        return _pool
 
     @contextmanager
     def get_connection():
-        conn = _pool.getconn()
+        conn = _get_pool().getconn()
         try:
             yield conn
             conn.commit()
@@ -29,7 +34,7 @@ if DATABASE_URL:
             conn.rollback()
             raise
         finally:
-            _pool.putconn(conn)
+            _get_pool().putconn(conn)
 
     def placeholder():
         return "%s"
