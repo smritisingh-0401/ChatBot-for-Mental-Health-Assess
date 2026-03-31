@@ -19,7 +19,23 @@ This bot is a *wellness support tool*, not a medical device.
 - Provide psychoeducation and emotional check\-ins
 - Direct you to professional resources
 
-❌ What I cannot do:
+❌ What I cannot do:DISCLAIMER_TEXT = (
+    "⚠️ Important Notice — Please Read Before Continuing\n\n"
+    "This bot is a wellness support tool, not a medical device.\n\n"
+    "✅ What I can do:\n"
+    "• Administer PHQ-9 and GAD-7 screening questionnaires\n"
+    "• Share evidence-based coping strategies (CBT, DBT, Mindfulness)\n"
+    "• Provide psychoeducation and emotional check-ins\n"
+    "• Direct you to professional resources\n\n"
+    "❌ What I cannot do:\n"
+    "• Diagnose any mental health condition\n"
+    "• Replace a licensed therapist, psychiatrist, or doctor\n"
+    "• Guarantee crisis intervention\n\n"
+    "🔒 Privacy: Your conversations are stored to personalise your experience. "
+    "Delete your data anytime with /deletedata.\n\n"
+    "📞 If you are in immediate danger, please call 112 (India) or 911 (US) immediately.\n\n"
+    "By typing AGREE, you confirm you have read and understood the above."
+)
 - Diagnose any mental health condition
 - Replace a licensed therapist, psychiatrist, or doctor
 - Guarantee crisis intervention
