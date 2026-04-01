@@ -40,6 +40,10 @@ from modules.therapy.cbt import CBT_MENU, get_cbt_technique
 from modules.therapy.dbt import DBT_MENU, get_dbt_skill
 from modules.therapy.mindfulness import MINDFULNESS_MENU, get_mindfulness_exercise
 
+from modules.psychoeducation.psychoed import PSYCHOED_MENU, get_topic
+from modules.companion.companion import (
+    CHECK_IN_MESSAGE, get_random_journal_prompt, get_empathy_response, should_show_anti_parasocial, get_anti_parasocial_reminder
+)
 # ── Windows event loop fix ────────────────────────────────────────────────
 if sys.platform.startswith('win'):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -647,6 +651,56 @@ therapy_handler = ConversationHandler(
 )
 
 
+# ============================================================
+# v2 Handlers —  (Companion / Psychoeducation )
+# ============================================================
+
+PSYCHOED_SELECT, PSYCHOED_PAGE = range(2)
+
+async def learn_command(update, context):
+    await update.message.reply_text(PSYCHOED_MENU)
+    return PSYCHOED_SELECT
+
+async def psychoed_select(update, context):
+    topic = get_topic(update.message.text.strip())
+    if not topic:
+        await update.message.reply_text("Please reply with 1, 2, 3, or 4.")
+        return PSYCHOED_SELECT
+    context.user_data["psychoed_topic"] = topic
+    context.user_data["psychoed_page"] = 0
+    await update.message.reply_text(topic["content"][0])
+    if len(topic["content"]) > 1:
+        await update.message.reply_text("Type 'next' for more, or /menu to stop.")
+        return PSYCHOED_PAGE
+    return ConversationHandler.END
+
+async def psychoed_next(update, context):
+    topic = context.user_data.get("psychoed_topic")
+    page = context.user_data.get("psychoed_page", 0) + 1
+    context.user_data["psychoed_page"] = page
+    if update.message.text.strip().lower() != "next" or page >= len(topic["content"]):
+        return ConversationHandler.END
+    await update.message.reply_text(topic["content"][page])
+    if page + 1 < len(topic["content"]):
+        await update.message.reply_text("Type 'next' to continue.")
+        return PSYCHOED_PAGE
+    return ConversationHandler.END
+
+learn_handler = ConversationHandler(
+    entry_points=[CommandHandler("learn", learn_command)],
+    states={
+        PSYCHOED_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, psychoed_select)],
+        PSYCHOED_PAGE:   [MessageHandler(filters.TEXT & ~filters.COMMAND, psychoed_next)],
+    },
+    fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+)
+
+async def journal_command(update, context):
+    prompt = get_random_journal_prompt()
+    await update.message.reply_text(f"Journal Prompt\n\n{prompt}\n\nTake your time. I am listening.")
+
+async def checkin_command(update, context):
+    await update.message.reply_text(CHECK_IN_MESSAGE)
 
 # ============================================================
 # Entry Point — Single, clean startup

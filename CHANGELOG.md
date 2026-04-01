@@ -18,8 +18,15 @@
 - Result- Some error are there in the main.py program
 
 ## [2.0.0-dev] - Day 4
-- Created upgrade branch `upgrade-v2-mental-health`
-- Scaffolded `modules/` subpackage directory
-- Added PostgreSQL support with SQLite fallback
-- Added new requirements
+- Added CBT therapy
+- Added DBT therapy
+- Added Mindfulness therapy
+- Tested for both Day 3 and Day 4 features everything is working
+
+## [2.0.0-dev] - Day 5
+- Added Companion mode
+- Added Psychoeduction mode
+
+
+
 
