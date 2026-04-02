@@ -27,6 +27,9 @@
 - Added Companion mode
 - Added Psychoeduction mode
 
+## [2.0.0-dev] - Day 6
+- Added crisis_detector
+- Added resources into the safety module
 
 
 

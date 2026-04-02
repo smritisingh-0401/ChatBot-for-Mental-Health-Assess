@@ -44,6 +44,11 @@ from modules.psychoeducation.psychoed import PSYCHOED_MENU, get_topic
 from modules.companion.companion import (
     CHECK_IN_MESSAGE, get_random_journal_prompt, get_empathy_response, should_show_anti_parasocial, get_anti_parasocial_reminder
 )
+
+from modules.safety.crisis_detector import assess_crisis, CrisisSeverity, log_crisis_event
+from modules.safety.resources import format_crisis_response
+import os
+
 # ── Windows event loop fix ────────────────────────────────────────────────
 if sys.platform.startswith('win'):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -396,7 +401,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ============================================================
-# v2 Handlers — Disclaimer
+# v2 Handlers — Safety
 # ============================================================
 
 async def handle_disclaimer_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -422,6 +427,44 @@ async def handle_disclaimer_response(update: Update, context: ContextTypes.DEFAU
     else:
         await update.message.reply_text(
             "Please type AGREE to continue, or /start to restart."
+        )
+
+
+DEFAULT_REGION = os.getenv("DEFAULT_CRISIS_REGION", "IN")
+
+async def crisis_aware_message_handler(update, context):
+    """
+    Global message interceptor — runs BEFORE other handlers (group=-2).
+    Checks every user message for crisis signals.
+    """
+    if not update.message or not update.message.text:
+        return
+    text = update.message.text
+    user_id = update.effective_user.id
+    assessment = assess_crisis(text)
+    if assessment.severity == CrisisSeverity.NONE:
+        return  # pass through to normal handlers
+
+    log_crisis_event(user_id, text, assessment.severity)
+
+    try:
+        from modules.db.user_profile import get_or_create_user
+        profile = get_or_create_user(user_id)
+        region = profile.get("region", DEFAULT_REGION) or DEFAULT_REGION
+    except Exception:
+        region = DEFAULT_REGION
+
+    if assessment.requires_resource_provision:
+        response = format_crisis_response(assessment.severity, region)
+        if response:
+            await update.message.reply_text(response)
+
+    if assessment.severity == CrisisSeverity.LOW:
+        await update.message.reply_text(
+            "It sounds like you are going through a really tough time. "
+            "I am here and I am listening.\n\n"
+            "Would you like to try a breathing exercise (/cbt) "
+            "or just talk about what is on your mind?"
         )
 
 
@@ -742,7 +785,6 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("trend", trend_command))
     app.add_handler(therapy_handler)
 
-    # Group 1: mood input (passive, alongside other handlers)
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
@@ -750,7 +792,10 @@ if __name__ == '__main__':
         ),
         group=1,
     )
-    
+    app.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, crisis_aware_message_handler),
+        group=-2
+    )
     app.add_error_handler(error_handler)
 
     print("[Bot] Starting polling...")
