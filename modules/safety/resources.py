@@ -1,106 +1,101 @@
 """
-Crisis detection module.
-Inspired by Paper 1's C-SSRS framework.
-Paper finding: 0% of 29 tested apps met full safety criteria.
+Region-specific crisis resources.
+Paper 1 finding: Many apps defaulted to US numbers even for international users.
 """
-import re
-import logging
-from dataclasses import dataclass, field
 
-logger = logging.getLogger(__name__)
+CRISIS_RESOURCES = {
+    "IN": {
+        "name": "India",
+        "emergency": "112",
+        "hotlines": [
+            {"name": "iCall (TISS)",           "number": "9152987821",    "hours": "Mon-Sat 8am-10pm"},
+            {"name": "Vandrevala Foundation",  "number": "1860-2662-345", "hours": "24/7"},
+            {"name": "SNEHI",                  "number": "044-24640050",  "hours": "Mon-Sat 8am-10pm"},
+            {"name": "NIMHANS",                "number": "080-46110007",  "hours": "Mon-Sat"},
+        ],
+        "note": "If in immediate danger, call 112 (India emergency).",
+    },
+    "US": {
+        "name": "United States",
+        "emergency": "911",
+        "hotlines": [
+            {"name": "988 Suicide & Crisis Lifeline", "number": "988",                   "hours": "24/7"},
+            {"name": "Crisis Text Line",              "number": "Text HOME to 741741",   "hours": "24/7"},
+        ],
+        "note": "If in immediate danger, call 911.",
+    },
+    "GB": {
+        "name": "United Kingdom",
+        "emergency": "999",
+        "hotlines": [
+            {"name": "Samaritans",          "number": "116 123",           "hours": "24/7"},
+            {"name": "PAPYRUS (under 35)",  "number": "0800 068 4141",     "hours": "Daily 9am-midnight"},
+            {"name": "Crisis Text Line",    "number": "Text SHOUT to 85258","hours": "24/7"},
+        ],
+        "note": "If in immediate danger, call 999.",
+    },
+    "AU": {
+        "name": "Australia",
+        "emergency": "000",
+        "hotlines": [
+            {"name": "Lifeline",     "number": "13 11 14",     "hours": "24/7"},
+            {"name": "Beyond Blue",  "number": "1300 22 4636", "hours": "24/7"},
+        ],
+        "note": "If in immediate danger, call 000.",
+    },
+    "CA": {
+        "name": "Canada",
+        "emergency": "911",
+        "hotlines": [
+            {"name": "Talk Suicide Canada", "number": "1-833-456-4566", "hours": "24/7"},
+        ],
+        "note": "If in immediate danger, call 911.",
+    },
+    "DEFAULT": {
+        "name": "International",
+        "emergency": "Local emergency number",
+        "hotlines": [
+            {"name": "International Association for Suicide Prevention",
+             "number": "https://www.iasp.info/resources/Crisis_Centres/", "hours": "24/7"},
+            {"name": "Befrienders Worldwide",
+             "number": "https://www.befrienders.org", "hours": "24/7"},
+        ],
+        "note": "Please call your local emergency number if in immediate danger.",
+    },
+}
 
-class CrisisSeverity:
-    NONE     = "none"
-    LOW      = "low"
-    MODERATE = "moderate"
-    HIGH     = "high"
-    CRITICAL = "critical"
 
-@dataclass
-class CrisisAssessment:
-    severity: str
-    triggered_patterns: list = field(default_factory=list)
-    requires_immediate_escalation: bool = False
-    requires_resource_provision: bool = False
+def get_resources(region: str) -> dict:
+    return CRISIS_RESOURCES.get(region.upper(), CRISIS_RESOURCES["DEFAULT"])
 
-# ── Keyword pattern sets (ordered highest to lowest severity) ────────────
-# Paper 1: 'censorship-free keyword entry' — we respond with support, not silence.
 
-CRITICAL_PATTERNS = [
-    r"i.ve decided.*(die|end|kill|suicide)",
-    r"(tonight|today|this week).*(kill|end|die).*(myself|my life)",
-    r"i (have|got) (a gun|pills|rope|knife|weapon)",
-    r"goodbye (everyone|world|forever)",
-    r"suicide (note|letter)",
-]
+def format_crisis_response(severity: str, region: str) -> str:
+    resources = get_resources(region)
 
-HIGH_PATTERNS = [
-    r"i (want|need|am going) to (die|kill myself|end my life|not exist)",
-    r"i (don.t|do not) want to (live|be alive|exist) (anymore|any more)",
-    r"(life|living) is not worth (it|living)",
-    r"no (reason|point) (to|in) (live|living|going on)",
-    r"everyone (would be|is) better (off|without) (without me|me)",
-    r"i wish i (was|were|am) dead",
-]
-
-MODERATE_PATTERNS = [
-    r"i (wish|wished) i (wasn.t|was not|weren.t|were not) (here|alive|born)",
-    r"i (don.t|do not) (care|matter) (anymore|any more)?",
-    r"what.s the point",
-    r"(feeling|feel) (hopeless|worthless|like a burden)",
-    r"no (hope|future|way out)",
-    r"i (hate|can.t stand) myself",
-    r"self.harm",
-    r"hurt(ing)? myself",
-]
-
-LOW_PATTERNS = [
-    r"(so|very|extremely|incredibly) (sad|depressed|down|low|alone|lonely)",
-    r"can.t (cope|function|go on)",
-    r"overwhelmed",
-    r"breaking (down|apart)",
-    r"(nobody|no one) (cares|understands|loves me)",
-]
-
-def _match_patterns(text: str, patterns: list) -> list:
-    text_lower = text.lower()
-    return [p for p in patterns if re.search(p, text_lower)]
-
-def assess_crisis(text: str) -> CrisisAssessment:
-    if not text or len(text.strip()) < 3:
-        return CrisisAssessment(severity=CrisisSeverity.NONE)
-
-    if matched := _match_patterns(text, CRITICAL_PATTERNS):
-        return CrisisAssessment(
-            severity=CrisisSeverity.CRITICAL, triggered_patterns=matched,
-            requires_immediate_escalation=True, requires_resource_provision=True,
+    if severity in ("critical", "high"):
+        hotline_text = "\n".join(
+            f"{h['name']}: {h['number']} ({h['hours']})"
+            for h in resources["hotlines"]
         )
-    if matched := _match_patterns(text, HIGH_PATTERNS):
-        return CrisisAssessment(
-            severity=CrisisSeverity.HIGH, triggered_patterns=matched,
-            requires_immediate_escalation=True, requires_resource_provision=True,
+        return (
+            f"I hear you, and I am concerned about your safety right now.\n\n"
+            f"Please reach out to one of these {resources['name']} crisis lines:\n\n"
+            f"{hotline_text}\n\n"
+            f"{resources['note']}\n\n"
+            f"You are not alone. These counsellors are trained to help and will not judge you.\n\n"
+            f"I will be here when you are ready to talk more."
         )
-    if matched := _match_patterns(text, MODERATE_PATTERNS):
-        return CrisisAssessment(
-            severity=CrisisSeverity.MODERATE, triggered_patterns=matched,
-            requires_immediate_escalation=False, requires_resource_provision=True,
-        )
-    if matched := _match_patterns(text, LOW_PATTERNS):
-        return CrisisAssessment(
-            severity=CrisisSeverity.LOW, triggered_patterns=matched,
-            requires_immediate_escalation=False, requires_resource_provision=False,
-        )
-    return CrisisAssessment(severity=CrisisSeverity.NONE)
 
-def log_crisis_event(user_id: int, trigger_text: str, severity: str):
-    from modules.db.connection import get_connection, placeholder
-    ph = placeholder()
-    try:
-        with get_connection() as conn:
-            conn.cursor().execute(
-                f"""INSERT INTO crisis_events (user_id, trigger_text, severity, resources_sent)
-                    VALUES ({ph}, {ph}, {ph}, {ph})""",
-                (user_id, trigger_text[:500], severity, 1),
-            )
-    except Exception as e:
-        logger.error(f"Failed to log crisis event: {e}")
+    if severity == "moderate":
+        hotline = resources["hotlines"][0] if resources["hotlines"] else None
+        hotline_text = f"{hotline['name']}: {hotline['number']}" if hotline else ""
+        return (
+            f"I am hearing that things are really hard right now, and I am glad you told me.\n\n"
+            f"You do not have to go through this alone. If you ever feel like you might hurt "
+            f"yourself, please reach out:\n\n"
+            f"{hotline_text}\n\n"
+            f"Would you like to try a grounding exercise? /mindfulness\n"
+            f"Or tell me more about what is going on."
+        )
+
+    return ""

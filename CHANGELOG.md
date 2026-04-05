@@ -31,5 +31,11 @@
 - Added crisis_detector
 - Added resources into the safety module
 
+## [2.0.0-dev] - Day 7
+- Did Day-5 and Day-6 testing there are error in deleting the entire chat record from the database and in chaning the region.
+- Added sentiment part in biomarkers module
+- Added tracker in biomarkers module
+- Did Day-7 testing for sentiment passed
+
 
 
