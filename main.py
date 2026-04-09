@@ -11,6 +11,8 @@ import os
 import logging
 from dotenv import load_dotenv
 
+from health_check import start_health_server
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -666,6 +668,29 @@ async def error_handler(update, context):
         return
     logger.error(f"Update {update} caused error: {error}", exc_info=context.error)
 
+async def send_daily_checkins(application):
+    """Send mood nudge to users active in last 7 days."""
+    from modules.db.connection import get_connection
+    try:
+        with get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT DISTINCT user_id FROM mood_logs
+                WHERE logged_at >= datetime('now', '-7 days')
+            """)
+            user_ids = [row[0] for row in cur.fetchall()]
+
+        print(f"[Scheduler] Sending check-ins to {len(user_ids)} users")
+        for uid in user_ids:
+            try:
+                await application.bot.send_message(
+                    chat_id=uid,
+                    text="🌙 Evening check-in! How are you feeling today?\n\nUse /mood to log it (takes 5 seconds)."
+                )
+            except Exception:
+                pass  # User may have blocked the bot — silently skip
+    except Exception as e:
+        print(f"[Scheduler] Error sending check-ins: {e}")
 
 # ============================================================
 # Entry Point
@@ -714,5 +739,32 @@ if __name__ == '__main__':
 
     app.add_error_handler(error_handler)
 
-    print("[Bot] Starting polling...")
-    app.run_polling(drop_pending_updates=True)
+    async def main():
+    # 1. Run DB migrations on every startup (safe — idempotent)
+        from modules.db.schema import run_migrations
+        run_migrations()
+
+    # 2. Start health check server
+        port = int(os.getenv("PORT", "8080"))
+        start_health_server(port)
+
+    # 3. APScheduler for daily check-ins
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        from apscheduler.triggers.cron import CronTrigger
+
+        application = ApplicationBuilder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
+
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(
+            send_daily_checkins,
+            CronTrigger(hour=14, minute=30),  # 14:30 UTC = 20:00 IST
+            args=[application],
+        )
+        scheduler.start()
+        print("[Scheduler] Daily check-ins scheduled for 20:00 IST")
+
+    # ... rest of handler registration ...
+    
+        print("[Bot] Starting polling...")
+        await application.run_polling(drop_pending_updates=True)
+

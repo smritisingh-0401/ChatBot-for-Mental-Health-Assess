@@ -37,5 +37,8 @@
 - Added tracker in biomarkers module
 - Did Day-7 testing for sentiment passed
 
+## [2.0.0-dev] - Day 8
+- Transfering into the cloud storage named as Neon 
+- 
 
 

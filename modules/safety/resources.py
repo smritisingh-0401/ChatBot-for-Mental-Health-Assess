@@ -1,7 +1,4 @@
-"""
-Region-specific crisis resources.
-Paper 1 finding: Many apps defaulted to US numbers even for international users.
-"""
+
 
 CRISIS_RESOURCES = {
     "IN": {

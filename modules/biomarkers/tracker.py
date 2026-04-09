@@ -1,8 +1,4 @@
-"""
-Digital biomarker tracking.
-Paper 2: 'digital biomarkers (e.g., typing patterns)' for early detection.
-Tracks: message length, message frequency, sentiment trend.
-"""
+
 import logging
 from datetime import datetime, date
 from modules.db.connection import get_connection, placeholder

@@ -1,8 +1,4 @@
-"""
-Companion mode — social-oriented chatbot features.
-Paper 1: 'social-oriented chatbots are significantly more effective
-in reducing negative mental health issues than task-oriented programs.'
-"""
+
 import random
 
 GREETINGS = [

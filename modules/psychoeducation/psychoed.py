@@ -1,7 +1,3 @@
-"""
-Psychoeducation module: improve mental health literacy.
-Paper 1: chatbots 'improve mental health literacy and teach self-management strategies.'
-"""
 
 TOPICS = {
     "depression": {
