@@ -18,3 +18,5 @@ apscheduler>=3.10.4          # For daily mood check-ins
 
 # ── New: HTTP ─────────────────────────────────────────────────────────────
 httpx>=0.27.0                # Async HTTP for any external lookups
+
+nest-asyncio>=1.6.0

@@ -549,6 +549,13 @@ async def checkin_command(update, context):
     await update.message.reply_text(CHECK_IN_MESSAGE)
 
 async def general_message_handler(update, context):
+    # Don't run if another handler is waiting for input
+    if context.user_data.get("awaiting_region") or \
+       context.user_data.get("awaiting_delete_confirm") or \
+       context.user_data.get("awaiting_mood") or \
+       context.user_data.get("awaiting_disclaimer"):
+        return
+    
     """Empathetic fallback for free-form messages."""
     count = context.user_data.get("interaction_count", 0) + 1
     context.user_data["interaction_count"] = count
